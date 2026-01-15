@@ -1,101 +1,42 @@
 import Parser from 'rss-parser'
 
 const parser = new Parser()
-
-// Multiple Nitter instances for fallback
-const NITTER_INSTANCES = [
-  'https://nitter.net',
-  'https://nitter.poast.org',
-  'https://nitter.1d4.us'
-]
-
-// CORS proxies as final fallback
-const CORS_PROXIES = [
-  (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`
-]
+const RSS_FEED_URL = 'https://rss.app/feeds/SKdmwNTy6aLaQTvw.xml'
 
 export async function fetchYottaTweets(days = 30) {
   const cutoffDate = new Date()
   cutoffDate.setDate(cutoffDate.getDate() - days)
 
-  // Try each Nitter instance
-  for (const instance of NITTER_INSTANCES) {
-    try {
-      const rssUrl = `${instance}/YottaLabs/rss`
-      console.log(`Trying Nitter instance: ${instance}`)
+  try {
+    console.log(`Fetching RSS feed: ${RSS_FEED_URL}`)
 
-      const feed = await parser.parseURL(rssUrl)
+    const feed = await parser.parseURL(RSS_FEED_URL)
 
-      if (feed && feed.items && feed.items.length > 0) {
-        // Filter tweets from last N days
-        const recentTweets = feed.items
-          .filter(item => new Date(item.pubDate) > cutoffDate)
-          .slice(0, 50) // Get up to 50 tweets
-          .map(item => ({
-            id: item.guid || item.link,
-            title: item.title,
-            content: item.contentSnippet || '',
-            date: new Date(item.pubDate),
-            link: item.link
-          }))
+    if (feed && feed.items && feed.items.length > 0) {
+      // Filter items from last N days
+      const recentItems = feed.items
+        .filter(item => new Date(item.pubDate) > cutoffDate)
+        .slice(0, 50) // Get up to 50 items
+        .map(item => ({
+          id: item.guid || item.link,
+          title: item.title,
+          content: item.contentSnippet || '',
+          date: new Date(item.pubDate),
+          link: item.link
+        }))
 
-        if (recentTweets.length > 0) {
-          console.log(`✓ Successfully fetched ${recentTweets.length} tweets from ${instance}`)
-          return recentTweets
-        }
-      }
-    } catch (error) {
-      console.log(`✗ Failed to fetch from ${instance}: ${error.message}`)
-      continue
-    }
-  }
-
-  // Fallback: Try with CORS proxies
-  for (const proxyFunc of CORS_PROXIES) {
-    for (const instance of NITTER_INSTANCES.slice(0, 2)) {
-      try {
-        const rssUrl = `${instance}/YottaLabs/rss`
-        const proxyUrl = proxyFunc(rssUrl)
-
-        console.log(`Trying with CORS proxy: ${rssUrl}`)
-
-        const response = await fetch(proxyUrl, {
-          headers: { 'Accept': 'application/rss+xml, application/xml' }
-        })
-
-        if (!response.ok) continue
-
-        const text = await response.text()
-        const feed = await parser.parseString(text)
-
-        if (feed && feed.items && feed.items.length > 0) {
-          const recentTweets = feed.items
-            .filter(item => new Date(item.pubDate) > cutoffDate)
-            .slice(0, 50)
-            .map(item => ({
-              id: item.guid || item.link,
-              title: item.title,
-              content: item.contentSnippet || '',
-              date: new Date(item.pubDate),
-              link: item.link
-            }))
-
-          if (recentTweets.length > 0) {
-            console.log(`✓ Successfully fetched ${recentTweets.length} tweets via CORS proxy`)
-            return recentTweets
-          }
-        }
-      } catch (error) {
-        console.log(`✗ Failed with CORS proxy: ${error.message}`)
-        continue
+      if (recentItems.length > 0) {
+        console.log(`✓ Successfully fetched ${recentItems.length} items from RSS feed`)
+        return recentItems
       }
     }
-  }
 
-  // If all else fails, return empty array
-  console.error('Failed to fetch tweets from all sources')
-  return []
+    console.error('No items found in RSS feed')
+    return []
+  } catch (error) {
+    console.error(`✗ Failed to fetch RSS feed: ${error.message}`)
+    return []
+  }
 }
 
 export function formatTweetsForSummarization(tweets) {
