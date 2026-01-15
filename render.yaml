@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: yotta-report
+    runtime: node
+    region: oregon
+    plan: starter
+
+    # Build command
+    buildCommand: npm install && npm run build
+
+    # Start command
+    startCommand: NODE_ENV=production npm start
+
+    # Environment variables (set in Render dashboard)
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false  # Set in dashboard for security
+      - key: CORS_ORIGIN
+        value: https://chainofthought.xyz
+
+    # Port
+    port: 3001
+
+    # Auto-deploy on git push
+    autoDeploy: true
+
+    # Health check
+    healthCheckPath: /health
